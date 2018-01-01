@@ -1,15 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 
-	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/client"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/radu-matei/etcd-manager/pkg/cluster"
 )
 
 func main() {
@@ -21,28 +20,16 @@ func main() {
 	if err != nil {
 		log.Fatalf("cannot get Kubernetes config: %v", err)
 	}
-	cli, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		log.Fatalf("cannot get Kubernetes client: %v", err)
-	}
 
 	etcdClient := client.MustNew(config)
+	c := cluster.NewCluster("etcd-kube-toolkit", 3)
 
-}
-
-func newCluster(name string, size int) *api.EtcdCluster {
-	return &api.EtcdCluster{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       api.EtcdClusterResourceKind,
-			APIVersion: api.SchemeGroupVersion.String(),
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: name,
-		},
-		Spec: api.ClusterSpec{
-			Size: size,
-		},
+	res, err := cluster.DeployCluster(etcdClient, c, "default")
+	if err != nil {
+		log.Fatalf("cannot deploy cluster: %v", err)
 	}
+
+	fmt.Printf("created cluster: %v", res.Name)
 }
 
 func getEnvVarOrExit(varName string) string {
